@@ -1,0 +1,36 @@
+# Actual CI pipeline that is executed in Azure DevOps
+
+trigger:
+  tags:
+    include:
+    - '*'
+
+resources:
+  repositories:
+  - repository: self
+  - repository: template_repository
+    type: git
+    name: aks-devops
+    ref: refs/tags/1.0.0
+
+variables:
+- template: pipeline/templates/vars.yaml@template_repository
+- name: applicationName
+  value: 'volatility_estimation'
+- name: pythonLintFolder
+  value: 'src/MLPipeline/'
+- name: pythonTestFolder
+  value: 'tests/MLPipeline/'
+
+stages:
+
+- stage: testStage
+  displayName: 'Test'
+  jobs:
+  - template: test-unit-linting-job.yml
+
+- stage: buildStage
+  displayName: 'Build'
+  condition: and(succeeded(), or(eq(variables['Build.Reason'], 'PullRequest'), startsWith(variables['build.sourceBranch'], 'refs/tags/'), eq(variables['build.sourceBranch'], 'refs/heads/main'), startsWith(variables['build.sourceBranch'], 'refs/heads/release/')))
+  jobs:
+  - template: pipeline/templates/build-docker-job.yml@template_repository
